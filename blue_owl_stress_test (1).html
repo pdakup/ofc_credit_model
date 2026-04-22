@@ -598,24 +598,30 @@
     <div class="input-row">
       <div class="input-label">Min Interest Coverage</div>
       <div class="slider-wrap">
-        <input type="range" id="cov_ic" min="1" max="5" value="2.0" step="0.1" oninput="update()">
+        <input type="range" id="cov_ic" min="1" max="5" value="3.8" step="0.1" oninput="update()">
         <div class="slider-val" id="cov_ic_val">2.0x</div>
       </div>
     </div>
     <div class="input-row">
       <div class="input-label">Max Net Leverage</div>
       <div class="slider-wrap">
-        <input type="range" id="cov_lev" min="2" max="12" value="7.5" step="0.25" oninput="update()">
+        <input type="range" id="cov_lev" min="2" max="12" value="10.0" step="0.25" oninput="update()">
         <div class="slider-val" id="cov_lev_val">7.5x</div>
       </div>
     </div>
     <div class="input-row">
       <div class="input-label">Min Liquidity ($M)</div>
       <div class="slider-wrap">
-        <input type="range" id="cov_liq" min="0" max="500" value="0" step="25" oninput="update()">
+        <input type="range" id="cov_liq" min="0" max="500" value="0" step="221" oninput="update()">
         <div class="slider-val" id="cov_liq_val">$0</div>
       </div>
     </div>
+    <div class="input-row">
+  <div class="input-label">Min Debt Service Coverage</div>
+  <div class="slider-wrap">
+    <input type="range" id="cov_dscr" min="1" max="5" value="2.7" step="0.1" oninput="update()">
+    <div class="slider-val" id="cov_dscr_val">2.7x</div>
+  </div>
   </div>
 
   <div>
