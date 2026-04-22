@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBDC2 — Credit Stress Test & Sensitivity Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: #232830;
+    --border2: #2e3540;
+    --text: #e8edf2;
+    --text2: #8a9ab0;
+    --text3: #4a5668;
+    --accent: #00d4aa;
+    --accent2: #0099cc;
+    --warn: #f0a500;
+    --danger: #e05252;
+    --ok: #3ecf8e;
+    --label: #5b6f88;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-badge {
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+  header h1 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+  header span {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+  }
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .pill-ok { border-color: var(--ok); color: var(--ok); }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: calc(100vh - 53px);
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .sidebar-section-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: var(--label);
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+
+  .scenario-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .scenario-tab {
+    flex: 1;
+    min-width: 60px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .scenario-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .scenario-tab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .scenario-tab.warn-tab.active { background: var(--warn); border-color: var(--warn); }
+  .scenario-tab.danger-tab.active { background: var(--danger); border-color: var(--danger); }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .input-label {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text2);
+    flex: 1;
+    min-width: 0;
+  }
+  .input-label small {
+    display: block;
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+  .slider-wrap {
+    flex: 0 0 130px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 90px;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .slider-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* ── MAIN ── */
+  main {
+    padding: 20px 24px;
+    overflow-x: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .section-head h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    transition: background 0.3s;
+  }
+  .kpi-card.warn::before { background: var(--warn); }
+  .kpi-card.danger::before { background: var(--danger); }
+  .kpi-name {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--label);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+    transition: color 0.3s;
+  }
+  .kpi-value.warn { color: var(--warn); }
+  .kpi-value.danger { color: var(--danger); }
+  .kpi-value.ok { color: var(--ok); }
+  .kpi-sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+
+  /* ── MAIN TABLE ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--border2);
+  }
+  thead th {
+    padding: 9px 14px;
+    text-align: right;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--label);
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; min-width: 200px; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.section-row {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border2);
+  }
+  tbody tr.section-row td {
+    padding: 6px 14px 4px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--label);
+    text-transform: uppercase;
+  }
+  tbody td {
+    padding: 7px 14px;
+    text-align: right;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  tbody td:first-child {
+    text-align: left;
+    color: var(--text);
+    padding-left: 20px;
+    font-size: 11px;
+  }
+  tbody tr.bold-row td { color: var(--text); font-weight: 600; }
+  tbody tr.bold-row td:first-child { padding-left: 14px; }
+
+  .hist { color: var(--text3) !important; }
+
+  .cell-ok { color: var(--ok) !important; }
+  .cell-warn { color: var(--warn) !important; }
+  .cell-danger { color: var(--danger) !important; }
+
+  /* ── HEATMAP ── */
+  .heatmap-grid {
+    display: grid;
+    gap: 3px;
+  }
+  .hm-row {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .hm-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    width: 160px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hm-cell {
+    flex: 1;
+    height: 28px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  /* ── SCENARIO COMPARISON ── */
+  .scenario-compare {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .scenario-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+  .scenario-card.base { border-top: 2px solid var(--ok); }
+  .scenario-card.stress { border-top: 2px solid var(--warn); }
+  .scenario-card.severe { border-top: 2px solid var(--danger); }
+  .scenario-card-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .scenario-card.base .scenario-card-title { color: var(--ok); }
+  .scenario-card.stress .scenario-card-title { color: var(--warn); }
+  .scenario-card.severe .scenario-card-title { color: var(--danger); }
+
+  .sc-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .sc-row:last-child { border-bottom: none; }
+  .sc-metric { color: var(--text3); }
+  .sc-val { color: var(--text2); }
+
+  /* ── BREACH INDICATOR ── */
+  .breach-bar {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .breach-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    width: 140px;
+  }
+  .breach-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border2);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .breach-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease, background 0.5s ease;
+  }
+  .breach-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    width: 60px;
+    text-align: right;
+  }
+  .breach-threshold {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    width: 80px;
+    text-align: right;
+  }
+
+  /* ── STRESS SEVERITY GAUGE ── */
+  .gauge-wrap {
+    text-align: center;
+    padding: 10px;
+  }
+  .stress-score {
+    font-family: var(--mono);
+    font-size: 42px;
+    font-weight: 300;
+    transition: color 0.4s;
+  }
+  .stress-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .note {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    padding: 6px 10px;
+    background: var(--surface2);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">CREDIT</div>
+  <h1>Blue Owl Technology Finance Corp &nbsp;·&nbsp; OBDC2</h1>
+  <span>ASC 842 &nbsp;|&nbsp; BDC / Senior Secured Lending &nbsp;|&nbsp; USD Millions</span>
+  <div class="header-right">
+    <span class="pill">FY2025A Base</span>
+    <span class="pill pill-ok" id="status-pill">No Covenant Breach</span>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside>
+
+  <div>
+    <div class="sidebar-section-title">Active Scenario</div>
+    <div class="scenario-tabs">
+      <div class="scenario-tab active" onclick="loadScenario('base')">Base</div>
+      <div class="scenario-tab warn-tab" onclick="loadScenario('stress')">Stress</div>
+      <div class="scenario-tab danger-tab" onclick="loadScenario('severe')">Severe</div>
+      <div class="scenario-tab" onclick="loadScenario('custom')">Custom</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sidebar-section-title">Revenue & Growth</div>
+    <div class="input-row">
+      <div class="input-label">Revenue Growth YoY<small>FY2025A: $824M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="rev_growth" min="-40" max="30" value="0" step="1" oninput="update()">
+        <div class="slider-val" id="rev_growth_val">0%</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">EBITDA Margin<small>Base: ~63%</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="ebitda_margin" min="20" max="80" value="63" step="1" oninput="update()">
+        <div class="slider-val" id="ebitda_margin_val">63%</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sidebar-section-title">Debt & Interest</div>
+    <div class="input-row">
+      <div class="input-label">Total Debt ($M)<small>FY2025A: $6,288M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="total_debt" min="3000" max="12000" value="6288" step="50" oninput="update()">
+        <div class="slider-val" id="total_debt_val">6,288</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Avg Interest Rate<small>Base: ~3.7%</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="int_rate" min="2" max="12" value="3.7" step="0.1" oninput="update()">
+        <div class="slider-val" id="int_rate_val">3.7%</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Cash & Equivalents<small>FY2025A: $283M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="cash" min="50" max="2000" value="283" step="25" oninput="update()">
+        <div class="slider-val" id="cash_val">283</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sidebar-section-title">Operating & Cash Flow</div>
+    <div class="input-row">
+      <div class="input-label">D&A ($M)<small>FY2025A: ~$52M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="da" min="10" max="150" value="52" step="2" oninput="update()">
+        <div class="slider-val" id="da_val">52</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Capex ($M)<small>FY2025A: ~$5M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="capex" min="0" max="100" value="5" step="1" oninput="update()">
+        <div class="slider-val" id="capex_val">5</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">CFO % of EBITDA<small>Realized operating CF</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="cfo_pct" min="-150" max="100" value="-200" step="5" oninput="update()">
+        <div class="slider-val" id="cfo_pct_val">–</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Tax Rate<small>Effective rate</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="tax_rate" min="0" max="35" value="1" step="0.5" oninput="update()">
+        <div class="slider-val" id="tax_rate_val">1%</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sidebar-section-title">Covenant Thresholds</div>
+    <div class="input-row">
+      <div class="input-label">Min Interest Coverage</div>
+      <div class="slider-wrap">
+        <input type="range" id="cov_ic" min="1" max="5" value="2.0" step="0.1" oninput="update()">
+        <div class="slider-val" id="cov_ic_val">2.0x</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Max Net Leverage</div>
+      <div class="slider-wrap">
+        <input type="range" id="cov_lev" min="2" max="12" value="7.5" step="0.25" oninput="update()">
+        <div class="slider-val" id="cov_lev_val">7.5x</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Min Liquidity ($M)</div>
+      <div class="slider-wrap">
+        <input type="range" id="cov_liq" min="0" max="500" value="0" step="25" oninput="update()">
+        <div class="slider-val" id="cov_liq_val">$0</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="sidebar-section-title">Valuation (EV) Inputs</div>
+    <div class="input-row">
+      <div class="input-label">Share Price ($)<small>Current: $11.54</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="share_price" min="4" max="25" value="11.54" step="0.25" oninput="update()">
+        <div class="slider-val" id="share_price_val">$11.54</div>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-label">Shares Outstanding (M)<small>Current: 464M</small></div>
+      <div class="slider-wrap">
+        <input type="range" id="shares_out" min="200" max="700" value="464" step="5" oninput="update()">
+        <div class="slider-val" id="shares_out_val">464M</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">All figures USD millions. BDC — EV = Mkt Cap + Debt − Cash. CF volatile due to origination flows.</div>
+
+</aside>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main>
+
+  <!-- KPI STRIP -->
+  <div>
+    <div class="section-head">
+      <h2>Key Credit Metrics — Projected</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="kpi-grid" id="kpi-grid">
+      <!-- populated by JS -->
+    </div>
+  </div>
+
+  <!-- COVENANT HEADROOM -->
+  <div>
+    <div class="section-head">
+      <h2>Covenant Headroom Analysis</h2>
+      <div class="section-line"></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px;" id="covenant-bars">
+    </div>
+  </div>
+
+  <!-- PRO FORMA TABLE -->
+  <div>
+    <div class="section-head">
+      <h2>Pro Forma Income & Credit Metrics</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="table-wrap">
+      <table id="proforma-table">
+        <!-- populated by JS -->
+      </table>
+    </div>
+  </div>
+
+  <!-- SCENARIO COMPARISON -->
+  <div>
+    <div class="section-head">
+      <h2>Scenario Comparison — Key Ratios</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="scenario-compare" id="scenario-compare">
+    </div>
+  </div>
+
+  <!-- SENSITIVITY HEATMAP -->
+  <div>
+    <div class="section-head">
+      <h2>Sensitivity Heatmap — Net Debt/EBITDA by Revenue Growth × EBITDA Margin</h2>
+      <div class="section-line"></div>
+    </div>
+    <div id="heatmap-wrap">
+    </div>
+  </div>
+
+  <!-- ENTERPRISE VALUE & VALUATION ANALYSIS -->
+  <div>
+    <div class="section-head">
+      <h2>Enterprise Value & Valuation Analysis</h2>
+      <div class="section-line"></div>
+    </div>
+    <div class="kpi-grid" id="ev-kpi-grid" style="margin-bottom:14px;"></div>
+    <div class="table-wrap">
+      <table id="ev-table"></table>
+    </div>
+  </div>
+
+  <!-- EV/EBITDA HEATMAP -->
+  <div>
+    <div class="section-head">
+      <h2>Sensitivity Heatmap — EV/EBITDA by Share Price × EBITDA Margin</h2>
+      <div class="section-line"></div>
+    </div>
+    <div id="ev-heatmap-wrap"></div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ── HISTORICAL DATA (from Bloomberg screenshots) ──
+const HIST = {
+  rev:    { 2023: 494.8, 2024: 385.0, 2025: 824.0 },
+  ebitda: { 2023: 540.2, 2024: 430.1, 2025: 788.7 }, // T12M EBITDA from EV tab (BBG Adj)
+  ebit:   { 2023: 381.8, 2024: 279.3, 2025: 519.6 },
+  netInc: { 2023: 369.1, 2024: 319.2, 2025: 720.4 },
+  intExp: { 2023: 173.4, 2024: 189.5, 2025: 304.7 },
+  debt:   { 2023: 2947.3, 2024: 2914.5, 2025: 6288.2 },
+  cash:   { 2023: 469.0, 2024: 257.0, 2025: 283.0 },
+  cfo:    { 2023: 708.4, 2024: 64.2, 2025: -916.0 },
+  da:     { 2023: 37.1, 2024: 41.9, 2025: 52.3 },
+  capex:  { 2023: 0, 2024: 0, 2025: 5 },
+  tax:    { 2023: 9.1, 2024: 11.5, 2025: 7.5 },
+  totalAssets: { 2025: 14715.0 },
+  equity: { 2023: 3530.0, 2024: 3625.2, 2025: 8041.6 },
+  // Enterprise Value data (from Bloomberg EV tab, 04/21/2026 current)
+  mktCap:   { 2025: 6747.3, current: 5328.3 },
+  ev:       { 2025: 12752.5, current: 11333.6 },
+  bookVal:  { 2023: 3530.0, 2024: 3625.2, 2025: 8041.6 },
+  sharesOut:{ 2025: 464.0, current: 464.0 },
+  lastPrice:{ 2025: 14.54, current: 11.54 },
+  // EV multiples (actual)
+  ev_ebitda:{ 2025: 16.17, current: 14.37 },
+  ev_ebit:  { 2025: 24.54, current: 21.81 },
+  ev_book:  { 2025: 1.59,  current: 1.41 },
+  pb:       { 2025: 0.84,  current: 0.67 },
+  td_ev:    { 2025: 0.49,  current: 0.55 },
+  td_cap:   { 2023: 45.50, 2024: 44.57, 2025: 43.88 },
+};
+
+// ── SCENARIO PRESETS ──
+const SCENARIOS = {
+  base:   { rev_growth:5,  ebitda_margin:63, total_debt:6288, int_rate:3.7, cash:500,  da:55,  capex:5,  cfo_pct:60,  tax_rate:1  },
+  stress: { rev_growth:-10, ebitda_margin:50, total_debt:7000, int_rate:5.5, cash:300,  da:55,  capex:10, cfo_pct:30,  tax_rate:1  },
+  severe: { rev_growth:-25, ebitda_margin:35, total_debt:8000, int_rate:7.5, cash:150,  da:55,  capex:15, cfo_pct:-50, tax_rate:1  },
+  custom: null,
+};
+
+function g(id) { return parseFloat(document.getElementById(id).value); }
+function sv(id, val) { document.getElementById(id).value = val; }
+
+function loadScenario(name) {
+  document.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (name === 'custom') { update(); return; }
+  const s = SCENARIOS[name];
+  sv('rev_growth', s.rev_growth);
+  sv('ebitda_margin', s.ebitda_margin);
+  sv('total_debt', s.total_debt);
+  sv('int_rate', s.int_rate);
+  sv('cash', s.cash);
+  sv('da', s.da);
+  sv('capex', s.capex);
+  sv('cfo_pct', s.cfo_pct);
+  sv('tax_rate', s.tax_rate);
+  update();
+}
+
+function fmt(v, dec=1, suffix='') {
+  if (v === null || isNaN(v)) return '—';
+  return v.toFixed(dec) + suffix;
+}
+function fmtM(v) { return v === null ? '—' : '$' + v.toFixed(1); }
+function fmtX(v) { return v === null || isNaN(v) ? '—' : v.toFixed(1) + 'x'; }
+function fmtP(v) { return v === null || isNaN(v) ? '—' : v.toFixed(1) + '%'; }
+
+function calcMetrics(inputs) {
+  const rev    = HIST.rev[2025] * (1 + inputs.rev_growth / 100);
+  const ebitda = rev * inputs.ebitda_margin / 100;
+  const da     = inputs.da;
+  const ebit   = ebitda - da;
+  const intExp = inputs.total_debt * inputs.int_rate / 100;
+  const ebt    = ebit - intExp;
+  const tax    = Math.max(0, ebt) * inputs.tax_rate / 100;
+  const netInc = ebt - tax;
+  const capex  = inputs.capex;
+  const cash   = inputs.cash;
+  const debt   = inputs.total_debt;
+  const netDebt= debt - cash;
+
+  // CFO: for BDC, use slider as % of EBITDA (since actual CFO driven by originations)
+  const cfo = ebitda * inputs.cfo_pct / 100;
+  const fcf = cfo - capex;
+
+  // Funds from Operations = Net Income + DA (simplified)
+  const ffo = netInc + da;
+
+  // METRICS
+  const ic         = intExp > 0 ? ebitda / intExp : null;     // Interest Coverage EBITDA/Interest
+  const td_ebitda  = ebitda > 0 ? debt / ebitda : null;       // TD/EBITDA
+  const nd_ebitda  = ebitda > 0 ? netDebt / ebitda : null;    // Net Debt/EBITDA
+  const cfo_ebitda = ebitda !== 0 ? cfo / ebitda * 100 : null;// CFO/EBITDA %
+  const fcf_ebitda = ebitda !== 0 ? fcf / ebitda * 100 : null;// FCF/EBITDA %
+  const fcf_rev    = rev !== 0 ? fcf / rev * 100 : null;      // FCF/Revenue %
+  const ffo_rev    = rev !== 0 ? ffo / rev * 100 : null;      // FFO/Revenue %
+  const ffo_td     = debt !== 0 ? ffo / debt * 100 : null;    // FFO/TD %
+  const fcf_nd     = netDebt !== 0 ? fcf / netDebt * 100 : null; // FCF/Net Debt %
+  const ebitda_m   = inputs.ebitda_margin;                     // EBITDA Margin %
+  const roc        = (ebitda > 0 && debt + (HIST.equity[2025] || 8041)) ? 
+                     ebit / (debt + (HIST.equity[2025] || 8041)) * 100 : null;
+
+
+  // ── EV & VALUATION ──
+  const sharePrice  = inputs.share_price || 11.54;
+  const sharesOut   = inputs.shares_out || 464;
+  const mktCap      = sharePrice * sharesOut;
+  const ev          = mktCap + debt - cash;
+  const ev_ebitda   = ebitda > 0 ? ev / ebitda : null;
+  const ev_ebit     = ebit > 0 ? ev / ebit : null;
+  const ev_book     = HIST.equity[2025] > 0 ? ev / HIST.equity[2025] : null;
+  const pb          = HIST.equity[2025] > 0 ? mktCap / HIST.equity[2025] : null;
+  const td_ev       = ev > 0 ? debt / ev : null;
+  const td_cap      = (debt + HIST.equity[2025]) > 0 ? debt / (debt + HIST.equity[2025]) * 100 : null;
+  const evPerShare  = sharesOut > 0 ? ev / sharesOut : null;
+  const navsPerShare= HIST.equity[2025] > 0 ? HIST.equity[2025] / sharesOut : null;
+
+  return {
+    rev, ebitda, da, ebit, intExp, ebt, tax, netInc, capex, cash, debt, netDebt, cfo, fcf, ffo,
+    ic, td_ebitda, nd_ebitda, cfo_ebitda, fcf_ebitda, fcf_rev, ffo_rev, ffo_td, fcf_nd, ebitda_m, roc,
+    rev_growth: inputs.rev_growth,
+    sharePrice, sharesOut, mktCap, ev, ev_ebitda, ev_ebit, ev_book, pb, td_ev, td_cap, evPerShare, navsPerShare,
+  };
+}
+
+function statusClass(val, thresholds) {
+  // thresholds: {ok, warn} — above ok = ok, above warn = warn, below = danger
+  if (val === null) return '';
+  if (val >= thresholds.ok) return 'ok';
+  if (val >= thresholds.warn) return 'warn';
+  return 'danger';
+}
+function statusClassInv(val, thresholds) {
+  // for leverage ratios: lower = better
+  if (val === null) return '';
+  if (val <= thresholds.ok) return 'ok';
+  if (val <= thresholds.warn) return 'warn';
+  return 'danger';
+}
+
+function update() {
+  const inputs = {
+    rev_growth:   g('rev_growth'),
+    ebitda_margin:g('ebitda_margin'),
+    total_debt:   g('total_debt'),
+    int_rate:     g('int_rate'),
+    cash:         g('cash'),
+    da:           g('da'),
+    capex:        g('capex'),
+    cfo_pct:      g('cfo_pct'),
+    tax_rate:     g('tax_rate'),
+    share_price:  g('share_price'),
+    shares_out:   g('shares_out'),
+  };
+
+  // Update display values
+  document.getElementById('rev_growth_val').textContent   = inputs.rev_growth + '%';
+  document.getElementById('ebitda_margin_val').textContent = inputs.ebitda_margin + '%';
+  document.getElementById('total_debt_val').textContent   = inputs.total_debt.toLocaleString();
+  document.getElementById('int_rate_val').textContent     = inputs.int_rate + '%';
+  document.getElementById('cash_val').textContent         = inputs.cash;
+  document.getElementById('da_val').textContent           = inputs.da;
+  document.getElementById('capex_val').textContent        = inputs.capex;
+  document.getElementById('cfo_pct_val').textContent      = inputs.cfo_pct + '%';
+  document.getElementById('tax_rate_val').textContent     = inputs.tax_rate + '%';
+  document.getElementById('cov_ic_val').textContent       = g('cov_ic').toFixed(1) + 'x';
+  document.getElementById('cov_lev_val').textContent      = g('cov_lev').toFixed(2) + 'x';
+  document.getElementById('cov_liq_val').textContent      = '$' + g('cov_liq');
+  document.getElementById('share_price_val').textContent  = '$' + g('share_price').toFixed(2);
+  document.getElementById('shares_out_val').textContent   = g('shares_out').toFixed(0) + 'M';
+
+  const m = calcMetrics(inputs);
+
+  renderKPIs(m);
+  renderCovenants(m, inputs);
+  renderProforma(m, inputs);
+  renderScenarioCompare();
+  renderHeatmap(inputs);
+  renderEV(m, inputs);
+  renderEVHeatmap(inputs);
+}
+
+function renderKPIs(m) {
+  const kpis = [
+    { name: 'Revenue', val: fmtM(m.rev), sub: fmt(m.rev_growth,1,'% YoY'), cls: m.rev_growth >= 0 ? 'ok' : 'danger' },
+    { name: 'EBITDA', val: fmtM(m.ebitda), sub: fmtP(m.ebitda_m) + ' margin', cls: m.ebitda_m >= 55 ? 'ok' : m.ebitda_m >= 40 ? 'warn' : 'danger' },
+    { name: 'Net Income', val: fmtM(m.netInc), sub: 'After Tax', cls: m.netInc >= 0 ? 'ok' : 'danger' },
+    { name: 'Interest Cov.', val: fmtX(m.ic), sub: 'EBITDA/Int.Exp', cls: statusClass(m.ic, {ok:3, warn:1.5}) },
+    { name: 'Net Debt/EBITDA', val: fmtX(m.nd_ebitda), sub: 'Core Leverage', cls: statusClassInv(m.nd_ebitda, {ok:5, warn:8}) },
+    { name: 'TD/EBITDA', val: fmtX(m.td_ebitda), sub: 'Gross Leverage', cls: statusClassInv(m.td_ebitda, {ok:6, warn:10}) },
+    { name: 'FCF/EBITDA', val: fmtP(m.fcf_ebitda), sub: 'Cash Conversion', cls: statusClass(m.fcf_ebitda, {ok:40, warn:10}) },
+    { name: 'FFO/Revenue', val: fmtP(m.ffo_rev), sub: 'Funds From Ops', cls: statusClass(m.ffo_rev, {ok:30, warn:15}) },
+    { name: 'FCF/Revenue', val: fmtP(m.fcf_rev), sub: 'Free CF Yield', cls: statusClass(m.fcf_rev, {ok:20, warn:0}) },
+    { name: 'FFO/Total Debt', val: fmtP(m.ffo_td), sub: 'Repayment Capacity', cls: statusClass(m.ffo_td, {ok:8, warn:4}) },
+    { name: 'CFO/EBITDA', val: fmtP(m.cfo_ebitda), sub: 'Op CF Quality', cls: statusClass(m.cfo_ebitda, {ok:40, warn:0}) },
+    { name: 'Net Debt', val: fmtM(m.netDebt), sub: 'Debt − Cash', cls: m.netDebt < m.ebitda * 6 ? 'ok' : 'warn' },
+  ];
+
+  const grid = document.getElementById('kpi-grid');
+  grid.innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls === 'danger' ? 'danger' : k.cls === 'warn' ? 'warn' : ''}">
+      <div class="kpi-name">${k.name}</div>
+      <div class="kpi-value ${k.cls}">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderCovenants(m, inputs) {
+  const cov_ic  = g('cov_ic');
+  const cov_lev = g('cov_lev');
+  const cov_liq = g('cov_liq');
+
+  const covenants = [
+    {
+      name: 'Min Interest Coverage (EBITDA/Interest)',
+      actual: m.ic,
+      threshold: cov_ic,
+      better: 'higher',
+      fmt: fmtX,
+      fillPct: m.ic !== null ? Math.min(100, (m.ic / (cov_ic * 2)) * 100) : 0,
+    },
+    {
+      name: 'Max Net Leverage (Net Debt/EBITDA)',
+      actual: m.nd_ebitda,
+      threshold: cov_lev,
+      better: 'lower',
+      fmt: fmtX,
+      fillPct: m.nd_ebitda !== null ? Math.min(100, (1 - m.nd_ebitda / (cov_lev * 2)) * 100 + 50) : 0,
+    },
+    {
+      name: 'Min Liquidity (Cash & Equivalents)',
+      actual: m.cash,
+      threshold: cov_liq,
+      better: 'higher',
+      fmt: (v) => '$' + v.toFixed(0) + 'M',
+      fillPct: cov_liq > 0 ? Math.min(100, (m.cash / (cov_liq * 2)) * 100) : 100,
+    },
+  ];
+
+  let breachCount = 0;
+  let html = '';
+
+  covenants.forEach(c => {
+    let passing, color;
+    if (c.better === 'higher') {
+      passing = c.actual !== null && c.actual >= c.threshold;
+    } else {
+      passing = c.actual !== null && c.actual <= c.threshold;
+    }
+    if (!passing) breachCount++;
+
+    const pct = Math.max(5, Math.min(95, c.fillPct));
+    color = passing ? 'var(--ok)' : 'var(--danger)';
+    const headroom = c.better === 'higher'
+      ? (c.actual !== null ? c.actual - c.threshold : null)
+      : (c.actual !== null ? c.threshold - c.actual : null);
+
+    html += `
+      <div class="breach-bar">
+        <div class="breach-label">${c.name}</div>
+        <div class="breach-track">
+          <div class="breach-fill" style="width:${pct}%; background:${color};"></div>
+        </div>
+        <div class="breach-val" style="color:${color};">${c.fmt(c.actual || 0)}</div>
+        <div class="breach-threshold">Threshold: ${c.fmt(c.threshold)}</div>
+        <div class="breach-val" style="color:${headroom !== null && headroom >= 0 ? 'var(--ok)' : 'var(--danger)'}; font-size:10px;">
+          ${headroom !== null ? (headroom >= 0 ? '+' : '') + c.fmt(headroom) + ' room' : '—'}
+        </div>
+        <div style="font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:3px; background:${passing ? 'rgba(62,207,142,0.15)' : 'rgba(224,82,82,0.15)'}; color:${passing ? 'var(--ok)' : 'var(--danger)'}; border:1px solid ${passing ? 'var(--ok)' : 'var(--danger)'};">
+          ${passing ? 'PASS' : 'BREACH'}
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('covenant-bars').innerHTML = html;
+
+  // Update header pill
+  const pill = document.getElementById('status-pill');
+  if (breachCount === 0) {
+    pill.textContent = 'No Covenant Breach';
+    pill.className = 'pill pill-ok';
+  } else {
+    pill.textContent = `${breachCount} Covenant Breach${breachCount > 1 ? 'es' : ''}`;
+    pill.className = 'pill';
+    pill.style.borderColor = 'var(--danger)';
+    pill.style.color = 'var(--danger)';
+  }
+}
+
+function renderProforma(m, inputs) {
+  const h = HIST;
+  const years = [2023, 2024, 2025, 'E-Proj'];
+  const rev23 = h.rev[2023], rev24 = h.rev[2024], rev25 = h.rev[2025];
+  const da23 = h.da[2023], da24 = h.da[2024];
+  const int23 = h.intExp ? h.intExp[2023] : HIST.intExp?.[2023] || 173.4;
+
+  // BDC EBITDA ≈ Operating Income (before credit losses / non-cash)
+  const ebitda23 = h.ebitda[2023], ebitda24 = h.ebitda[2024], ebitda25 = h.ebitda[2025];
+  const debt23 = h.debt[2023], debt24 = h.debt[2024], debt25 = h.debt[2025];
+  const cash23 = h.cash[2023], cash24 = h.cash[2024], cash25 = h.cash[2025];
+  const netInc23 = h.netInc[2023], netInc24 = h.netInc[2024], netInc25 = h.netInc[2025];
+  const cfo23 = h.cfo[2023], cfo24 = h.cfo[2024], cfo25 = h.cfo[2025];
+
+  const int25 = 304.7; // from CF statement (cash paid for interest)
+
+  const netDebt23 = debt23 - cash23;
+  const netDebt24 = debt24 - cash24;
+  const netDebt25 = debt25 - cash25;
+
+  const ffo23 = netInc23 + da23;
+  const ffo24 = netInc24 + da24;
+  const ffo25 = netInc25 + h.da[2025];
+  const fcf23 = cfo23 - h.capex[2023];
+  const fcf24 = cfo24 - h.capex[2024];
+  const fcf25 = cfo25 - h.capex[2025];
+
+  function row(label, vals, bold, fmt, section) {
+    const cls = bold ? 'bold-row' : '';
+    const cells = vals.map((v, i) => {
+      if (v === null) return `<td>—</td>`;
+      const histCls = i < 3 ? 'hist' : '';
+      const display = typeof fmt === 'function' ? fmt(v, i) : v;
+      return `<td class="${histCls} ${display.cls||''}">${display.val !== undefined ? display.val : display}</td>`;
+    });
+    if (section) return `<tr class="section-row"><td colspan="5">${label}</td></tr>`;
+    return `<tr class="${cls}"><td>${label}</td>${cells.join('')}</tr>`;
+  }
+
+  const P = m; // projected
+
+  // classify cells
+  const icVals = [
+    ebitda23 / int23, ebitda24 / (h.intExp?.[2024]||189.5), ebitda25 / int25, P.ic
+  ].map((v, i) => {
+    if (i < 3) return fmtX(v);
+    const c = statusClass(v, {ok:3, warn:1.5});
+    return `<span class="cell-${c}">${fmtX(v)}</span>`;
+  });
+
+  const table = document.getElementById('proforma-table');
+  table.innerHTML = `
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>FY2023A</th>
+      <th>FY2024A</th>
+      <th>FY2025A</th>
+      <th style="color:var(--accent);">Projected</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="section-row"><td colspan="5">— Income Statement —</td></tr>
+    <tr class="bold-row"><td>Revenue ($M)</td>
+      <td class="hist">${fmtM(rev23)}</td><td class="hist">${fmtM(rev24)}</td><td class="hist">${fmtM(rev25)}</td>
+      <td><span class="cell-${m.rev_growth>=0?'ok':'danger'}">${fmtM(P.rev)}</span></td></tr>
+    <tr><td>&nbsp;&nbsp;YoY Growth</td>
+      <td class="hist">—</td>
+      <td class="hist"><span class="cell-${(rev24/rev23-1)*100 >= 0 ? 'ok':'danger'}">${fmtP((rev24/rev23-1)*100)}</span></td>
+      <td class="hist"><span class="cell-${(rev25/rev24-1)*100 >= 0 ? 'ok':'danger'}">${fmtP((rev25/rev24-1)*100)}</span></td>
+      <td><span class="cell-${inputs.rev_growth>=0?'ok':'danger'}">${fmtP(inputs.rev_growth)}</span></td></tr>
+    <tr class="bold-row"><td>EBITDA ($M)</td>
+      <td class="hist">${fmtM(ebitda23)}</td><td class="hist">${fmtM(ebitda24)}</td><td class="hist">${fmtM(ebitda25)}</td>
+      <td><span class="cell-${P.ebitda >= 0 ? 'ok':'danger'}">${fmtM(P.ebitda)}</span></td></tr>
+    <tr><td>&nbsp;&nbsp;EBITDA Margin</td>
+      <td class="hist">${fmtP(ebitda23/rev23*100)}</td><td class="hist">${fmtP(ebitda24/rev24*100)}</td>
+      <td class="hist">${fmtP(ebitda25/rev25*100)}</td>
+      <td><span class="cell-${inputs.ebitda_margin >= 55 ? 'ok' : inputs.ebitda_margin >= 40 ? 'warn':'danger'}">${fmtP(inputs.ebitda_margin)}</span></td></tr>
+    <tr><td>Interest Expense ($M)</td>
+      <td class="hist">${fmtM(int23)}</td><td class="hist">${fmtM(189.5)}</td><td class="hist">${fmtM(int25)}</td>
+      <td>${fmtM(P.intExp)}</td></tr>
+    <tr><td>Net Income ($M)</td>
+      <td class="hist">${fmtM(netInc23)}</td><td class="hist">${fmtM(netInc24)}</td><td class="hist">${fmtM(netInc25)}</td>
+      <td><span class="cell-${P.netInc >= 0 ? 'ok':'danger'}">${fmtM(P.netInc)}</span></td></tr>
+
+    <tr class="section-row"><td colspan="5">— Cash Flow —</td></tr>
+    <tr><td>Cash from Operations ($M)</td>
+      <td class="hist">${fmtM(cfo23)}</td><td class="hist">${fmtM(cfo24)}</td><td class="hist">${fmtM(cfo25)}</td>
+      <td>${fmtM(P.cfo)}</td></tr>
+    <tr><td>Capex ($M)</td>
+      <td class="hist">—</td><td class="hist">—</td><td class="hist">${fmtM(h.capex[2025])}</td>
+      <td>${fmtM(P.capex)}</td></tr>
+    <tr class="bold-row"><td>Free Cash Flow ($M)</td>
+      <td class="hist">${fmtM(fcf23)}</td><td class="hist">${fmtM(fcf24)}</td><td class="hist">${fmtM(fcf25)}</td>
+      <td><span class="cell-${P.fcf >= 0 ? 'ok':'warn'}">${fmtM(P.fcf)}</span></td></tr>
+    <tr><td>FFO ($M)</td>
+      <td class="hist">${fmtM(ffo23)}</td><td class="hist">${fmtM(ffo24)}</td><td class="hist">${fmtM(ffo25)}</td>
+      <td>${fmtM(P.ffo)}</td></tr>
+
+    <tr class="section-row"><td colspan="5">— Balance Sheet —</td></tr>
+    <tr><td>Total Debt ($M)</td>
+      <td class="hist">${fmtM(debt23)}</td><td class="hist">${fmtM(debt24)}</td><td class="hist">${fmtM(debt25)}</td>
+      <td>${fmtM(P.debt)}</td></tr>
+    <tr><td>Cash ($M)</td>
+      <td class="hist">${fmtM(cash23)}</td><td class="hist">${fmtM(cash24)}</td><td class="hist">${fmtM(cash25)}</td>
+      <td>${fmtM(P.cash)}</td></tr>
+    <tr class="bold-row"><td>Net Debt ($M)</td>
+      <td class="hist">${fmtM(netDebt23)}</td><td class="hist">${fmtM(netDebt24)}</td><td class="hist">${fmtM(netDebt25)}</td>
+      <td>${fmtM(P.netDebt)}</td></tr>
+
+    <tr class="section-row"><td colspan="5">— Credit Ratios (Ability to Repay Debt) —</td></tr>
+    <tr><td>EBITDA / Interest (Coverage)</td>
+      <td class="hist">${fmtX(ebitda23/int23)}</td>
+      <td class="hist">${fmtX(ebitda24/189.5)}</td>
+      <td class="hist">${fmtX(ebitda25/int25)}</td>
+      <td><span class="cell-${statusClass(P.ic,{ok:3,warn:1.5})}">${fmtX(P.ic)}</span></td></tr>
+    <tr><td>TD / EBITDA</td>
+      <td class="hist">${fmtX(debt23/ebitda23)}</td><td class="hist">${fmtX(debt24/ebitda24)}</td>
+      <td class="hist">${fmtX(debt25/ebitda25)}</td>
+      <td><span class="cell-${statusClassInv(P.td_ebitda,{ok:6,warn:10})}">${fmtX(P.td_ebitda)}</span></td></tr>
+    <tr><td>Net Debt / EBITDA</td>
+      <td class="hist">${fmtX(netDebt23/ebitda23)}</td><td class="hist">${fmtX(netDebt24/ebitda24)}</td>
+      <td class="hist">${fmtX(netDebt25/ebitda25)}</td>
+      <td><span class="cell-${statusClassInv(P.nd_ebitda,{ok:5,warn:8})}">${fmtX(P.nd_ebitda)}</span></td></tr>
+    <tr><td>CFO / EBITDA</td>
+      <td class="hist">${fmtP(cfo23/ebitda23*100)}</td><td class="hist">${fmtP(cfo24/ebitda24*100)}</td>
+      <td class="hist">${fmtP(cfo25/ebitda25*100)}</td>
+      <td><span class="cell-${statusClass(P.cfo_ebitda,{ok:40,warn:0})}">${fmtP(P.cfo_ebitda)}</span></td></tr>
+    <tr><td>FCF / EBITDA</td>
+      <td class="hist">${fmtP(fcf23/ebitda23*100)}</td><td class="hist">${fmtP(fcf24/ebitda24*100)}</td>
+      <td class="hist">${fmtP(fcf25/ebitda25*100)}</td>
+      <td><span class="cell-${statusClass(P.fcf_ebitda,{ok:40,warn:0})}">${fmtP(P.fcf_ebitda)}</span></td></tr>
+    <tr><td>FCF / Revenue</td>
+      <td class="hist">${fmtP(fcf23/rev23*100)}</td><td class="hist">${fmtP(fcf24/rev24*100)}</td>
+      <td class="hist">${fmtP(fcf25/rev25*100)}</td>
+      <td><span class="cell-${statusClass(P.fcf_rev,{ok:20,warn:0})}">${fmtP(P.fcf_rev)}</span></td></tr>
+    <tr><td>FFO / Revenue</td>
+      <td class="hist">${fmtP(ffo23/rev23*100)}</td><td class="hist">${fmtP(ffo24/rev24*100)}</td>
+      <td class="hist">${fmtP(ffo25/rev25*100)}</td>
+      <td><span class="cell-${statusClass(P.ffo_rev,{ok:30,warn:15})}">${fmtP(P.ffo_rev)}</span></td></tr>
+    <tr><td>FFO / Total Debt</td>
+      <td class="hist">${fmtP(ffo23/debt23*100)}</td><td class="hist">${fmtP(ffo24/debt24*100)}</td>
+      <td class="hist">${fmtP(ffo25/debt25*100)}</td>
+      <td><span class="cell-${statusClass(P.ffo_td,{ok:8,warn:4})}">${fmtP(P.ffo_td)}</span></td></tr>
+    <tr><td>FCF / Net Debt</td>
+      <td class="hist">${fmtP(fcf23/netDebt23*100)}</td><td class="hist">${fmtP(fcf24/netDebt24*100)}</td>
+      <td class="hist">${fmtP(fcf25/netDebt25*100)}</td>
+      <td><span class="cell-${statusClass(P.fcf_nd,{ok:8,warn:0})}">${fmtP(P.fcf_nd)}</span></td></tr>
+    <tr><td>Return on Capital (EBIT/Invested Capital)</td>
+      <td class="hist">—</td><td class="hist">—</td><td class="hist">—</td>
+      <td>${fmtP(P.roc)}</td></tr>
+  </tbody>`;
+}
+
+function renderScenarioCompare() {
+  const scenarios = [
+    { name: 'Base Case', key: 'base', cls: 'base' },
+    { name: 'Stress', key: 'stress', cls: 'stress' },
+    { name: 'Severe', key: 'severe', cls: 'severe' },
+  ];
+
+  const html = scenarios.map(s => {
+    const m = calcMetrics(SCENARIOS[s.key]);
+    return `
+    <div class="scenario-card ${s.cls}">
+      <div class="scenario-card-title">${s.name}</div>
+      ${[
+        ['Revenue', fmtM(m.rev)],
+        ['EBITDA Margin', fmtP(m.ebitda_m)],
+        ['Interest Coverage', fmtX(m.ic)],
+        ['Net Debt/EBITDA', fmtX(m.nd_ebitda)],
+        ['TD/EBITDA', fmtX(m.td_ebitda)],
+        ['FCF/EBITDA', fmtP(m.fcf_ebitda)],
+        ['FFO/Revenue', fmtP(m.ffo_rev)],
+        ['FFO/Total Debt', fmtP(m.ffo_td)],
+        ['FCF/Net Debt', fmtP(m.fcf_nd)],
+        ['Net Debt ($M)', fmtM(m.netDebt)],
+      ].map(([label, val]) => `
+        <div class="sc-row">
+          <span class="sc-metric">${label}</span>
+          <span class="sc-val">${val}</span>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  document.getElementById('scenario-compare').innerHTML = html;
+}
+
+function renderHeatmap(currentInputs) {
+  const revGrowths = [-30, -20, -10, 0, 10, 20];
+  const margins    = [30, 40, 50, 60, 70];
+
+  // header row
+  let html = `<div style="display:flex; gap:3px; margin-bottom:6px; padding-left:163px;">
+    ${revGrowths.map(rg => `<div style="flex:1; text-align:center; font-family:var(--mono); font-size:9px; color:var(--text3);">${rg>0?'+':''}${rg}%</div>`).join('')}
+  </div>`;
+
+  margins.slice().reverse().forEach(margin => {
+    html += `<div class="hm-row">`;
+    html += `<div class="hm-label">Marg: ${margin}%</div>`;
+    revGrowths.forEach(rg => {
+      const inp = { ...currentInputs, rev_growth: rg, ebitda_margin: margin };
+      const m = calcMetrics(inp);
+      const v = m.nd_ebitda;
+      // color: green < 5x, yellow 5-8x, orange 8-12x, red > 12x
+      let bg, fg;
+      if (v === null || isNaN(v)) { bg = '#222'; fg = '#555'; }
+      else if (v <= 4) { bg = 'rgba(62,207,142,0.25)'; fg = '#3ecf8e'; }
+      else if (v <= 6) { bg = 'rgba(62,207,142,0.12)'; fg = '#8ecf9e'; }
+      else if (v <= 8) { bg = 'rgba(240,165,0,0.18)'; fg = '#f0a500'; }
+      else if (v <= 12) { bg = 'rgba(224,82,82,0.2)'; fg = '#e07070'; }
+      else { bg = 'rgba(224,82,82,0.4)'; fg = '#e05252'; }
+
+      // highlight current
+      const isCurrent = Math.abs(rg - currentInputs.rev_growth) <= 5 && Math.abs(margin - currentInputs.ebitda_margin) <= 5;
+      const border = isCurrent ? '1.5px solid var(--accent)' : 'none';
+
+      html += `<div class="hm-cell" style="background:${bg}; color:${fg}; border:${border};" title="Rev Growth: ${rg}%, Margin: ${margin}% → Net Debt/EBITDA: ${fmtX(v)}">${fmtX(v)}</div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div style="margin-top:8px; font-family:var(--mono); font-size:9px; color:var(--text3);">
+    Rows = EBITDA Margin (high → low) &nbsp;|&nbsp; Cols = Revenue Growth % &nbsp;|&nbsp; Values = Net Debt/EBITDA &nbsp;|&nbsp; 
+    <span style="color:var(--ok);">■</span> ≤4x &nbsp;
+    <span style="color:#8ecf9e;">■</span> 4–6x &nbsp;
+    <span style="color:var(--warn);">■</span> 6–8x &nbsp;
+    <span style="color:#e07070;">■</span> 8–12x &nbsp;
+    <span style="color:var(--danger);">■</span> >12x
+  </div>`;
+
+  const wrap = document.getElementById('heatmap-wrap');
+  wrap.innerHTML = `<div style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px;">${html}</div>`;
+}
+
+function renderEV(m, inputs) {
+  // EV KPI cards
+  const kpis = [
+    { name: 'Market Cap', val: '$' + (m.mktCap/1000).toFixed(2) + 'B', sub: m.sharesOut + 'M shares × $' + m.sharePrice.toFixed(2), cls: '' },
+    { name: 'Enterprise Value', val: '$' + (m.ev/1000).toFixed(2) + 'B', sub: 'Mkt Cap + Debt − Cash', cls: '' },
+    { name: 'EV / EBITDA', val: fmtX(m.ev_ebitda), sub: 'Actual FY2025: 16.2x', cls: m.ev_ebitda !== null && m.ev_ebitda <= 15 ? 'ok' : 'warn' },
+    { name: 'EV / EBIT', val: fmtX(m.ev_ebit), sub: 'Actual FY2025: 24.5x', cls: '' },
+    { name: 'EV / Book Value', val: fmtX(m.ev_book), sub: 'Actual FY2025: 1.59x', cls: '' },
+    { name: 'Price / Book', val: fmtX(m.pb), sub: 'Actual Current: 0.67x', cls: m.pb !== null && m.pb < 1 ? 'warn' : 'ok' },
+    { name: 'TD / EV', val: fmtP(m.td_ev !== null ? m.td_ev * 100 : null), sub: 'Debt burden on EV', cls: m.td_ev > 0.6 ? 'danger' : m.td_ev > 0.45 ? 'warn' : 'ok' },
+    { name: 'TD / Capital', val: fmtP(m.td_cap), sub: 'Actual FY2025: 43.9%', cls: m.td_cap < 50 ? 'ok' : m.td_cap < 65 ? 'warn' : 'danger' },
+    { name: 'EV per Share', val: '$' + (m.evPerShare || 0).toFixed(2), sub: 'Actual FY2025: $27.48', cls: '' },
+    { name: 'NAV per Share', val: '$' + (m.navsPerShare || 0).toFixed(2), sub: 'Book equity ÷ shares', cls: '' },
+  ];
+  document.getElementById('ev-kpi-grid').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls === 'danger' ? 'danger' : k.cls === 'warn' ? 'warn' : ''}">
+      <div class="kpi-name">${k.name}</div>
+      <div class="kpi-value ${k.cls}">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // EV Table
+  const ev25 = HIST.ev[2025];
+  const mktCap25 = HIST.mktCap[2025];
+  const mktCapCur = HIST.mktCap.current;
+  const evCur = HIST.ev.current;
+
+  document.getElementById('ev-table').innerHTML = `
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>FY2023A</th>
+      <th>FY2024A</th>
+      <th>FY2025A</th>
+      <th>Current (04/21/26)</th>
+      <th style="color:var(--accent);">Projected</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="section-row"><td colspan="6">— Enterprise Value Build —</td></tr>
+    <tr><td>Share Price</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">$${HIST.lastPrice[2025].toFixed(2)}</td>
+      <td class="hist">$${HIST.lastPrice.current.toFixed(2)}</td>
+      <td>$${m.sharePrice.toFixed(2)}</td></tr>
+    <tr><td>Shares Outstanding (M)</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">${HIST.sharesOut[2025].toFixed(0)}M</td>
+      <td class="hist">${HIST.sharesOut.current.toFixed(0)}M</td>
+      <td>${m.sharesOut.toFixed(0)}M</td></tr>
+    <tr class="bold-row"><td>Market Capitalization ($M)</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">$${mktCap25.toFixed(1)}</td>
+      <td class="hist">$${mktCapCur.toFixed(1)}</td>
+      <td>$${m.mktCap.toFixed(1)}</td></tr>
+    <tr><td>&nbsp;&nbsp;+ Total Debt ($M)</td>
+      <td class="hist">$${HIST.debt[2023].toFixed(1)}</td><td class="hist">$${HIST.debt[2024].toFixed(1)}</td>
+      <td class="hist">$${HIST.debt[2025].toFixed(1)}</td>
+      <td class="hist">$${HIST.debt[2025].toFixed(1)}</td>
+      <td>$${m.debt.toFixed(1)}</td></tr>
+    <tr><td>&nbsp;&nbsp;− Cash & Equivalents ($M)</td>
+      <td class="hist">$(${HIST.cash[2023].toFixed(1)})</td><td class="hist">$(${HIST.cash[2024].toFixed(1)})</td>
+      <td class="hist">$(${HIST.cash[2025].toFixed(1)})</td>
+      <td class="hist">$(${HIST.cash[2025].toFixed(1)})</td>
+      <td>$(${m.cash.toFixed(1)})</td></tr>
+    <tr class="bold-row"><td>Enterprise Value ($M)</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">$${ev25.toFixed(1)}</td>
+      <td class="hist">$${evCur.toFixed(1)}</td>
+      <td>$${m.ev.toFixed(1)}</td></tr>
+    <tr class="section-row"><td colspan="6">— Valuation Multiples —</td></tr>
+    <tr><td>EV / EBITDA</td>
+      <td class="hist">${fmtX(HIST.ev[2025] !== undefined ? undefined : null)}</td>
+      <td class="hist">—</td>
+      <td class="hist">${HIST.ev_ebitda[2025].toFixed(2)}x</td>
+      <td class="hist">${HIST.ev_ebitda.current.toFixed(2)}x</td>
+      <td><span class="cell-${m.ev_ebitda !== null && m.ev_ebitda <= 15 ? 'ok' : 'warn'}">${fmtX(m.ev_ebitda)}</span></td></tr>
+    <tr><td>EV / EBIT</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">${HIST.ev_ebit[2025].toFixed(2)}x</td>
+      <td class="hist">${HIST.ev_ebit.current.toFixed(2)}x</td>
+      <td>${fmtX(m.ev_ebit)}</td></tr>
+    <tr><td>EV / Book Value</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">${HIST.ev_book[2025].toFixed(2)}x</td>
+      <td class="hist">${HIST.ev_book.current.toFixed(2)}x</td>
+      <td>${fmtX(m.ev_book)}</td></tr>
+    <tr><td>Price / Book Value</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">${HIST.pb[2025].toFixed(2)}x</td>
+      <td class="hist"><span class="cell-warn">${HIST.pb.current.toFixed(2)}x</span></td>
+      <td>${fmtX(m.pb)}</td></tr>
+    <tr class="section-row"><td colspan="6">— Capital Structure —</td></tr>
+    <tr><td>Total Debt / EV</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">${HIST.td_ev[2025].toFixed(2)}x</td>
+      <td class="hist">${HIST.td_ev.current.toFixed(2)}x</td>
+      <td><span class="cell-${m.td_ev > 0.6 ? 'danger' : m.td_ev > 0.45 ? 'warn' : 'ok'}">${m.td_ev !== null ? (m.td_ev*100).toFixed(1)+'%' : '—'}</span></td></tr>
+    <tr><td>Total Debt / Total Capital</td>
+      <td class="hist">${HIST.td_cap[2023].toFixed(1)}%</td>
+      <td class="hist">${HIST.td_cap[2024].toFixed(1)}%</td>
+      <td class="hist">${HIST.td_cap[2025].toFixed(1)}%</td>
+      <td class="hist">${HIST.td_cap[2025].toFixed(1)}%</td>
+      <td><span class="cell-${m.td_cap < 50 ? 'ok' : m.td_cap < 65 ? 'warn' : 'danger'}">${fmtP(m.td_cap)}</span></td></tr>
+    <tr><td>EV per Share ($)</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">$${(ev25 / HIST.sharesOut[2025]).toFixed(2)}</td>
+      <td class="hist">$${(evCur / HIST.sharesOut.current).toFixed(2)}</td>
+      <td>$${(m.evPerShare || 0).toFixed(2)}</td></tr>
+    <tr><td>NAV (Book Value) per Share ($)</td>
+      <td class="hist">—</td><td class="hist">—</td>
+      <td class="hist">$${(HIST.equity[2025] / HIST.sharesOut[2025]).toFixed(2)}</td>
+      <td class="hist">$${(HIST.equity[2025] / HIST.sharesOut.current).toFixed(2)}</td>
+      <td>$${(m.navsPerShare || 0).toFixed(2)}</td></tr>
+  </tbody>`;
+}
+
+function renderEVHeatmap(currentInputs) {
+  const prices  = [6, 8, 10, 12, 14, 16];
+  const margins = [30, 40, 50, 60, 70];
+
+  let html = `<div style="display:flex; gap:3px; margin-bottom:6px; padding-left:163px;">
+    ${prices.map(p => `<div style="flex:1; text-align:center; font-family:var(--mono); font-size:9px; color:var(--text3);">$${p}</div>`).join('')}
+  </div>`;
+
+  margins.slice().reverse().forEach(margin => {
+    html += `<div class="hm-row">`;
+    html += `<div class="hm-label">Marg: ${margin}%</div>`;
+    prices.forEach(price => {
+      const inp = { ...currentInputs, share_price: price, ebitda_margin: margin };
+      const m = calcMetrics(inp);
+      const v = m.ev_ebitda;
+      let bg, fg;
+      if (v === null || isNaN(v)) { bg = '#222'; fg = '#555'; }
+      else if (v <= 10) { bg = 'rgba(62,207,142,0.25)'; fg = '#3ecf8e'; }
+      else if (v <= 15) { bg = 'rgba(62,207,142,0.12)'; fg = '#8ecf9e'; }
+      else if (v <= 20) { bg = 'rgba(240,165,0,0.18)'; fg = '#f0a500'; }
+      else if (v <= 30) { bg = 'rgba(224,82,82,0.2)'; fg = '#e07070'; }
+      else { bg = 'rgba(224,82,82,0.4)'; fg = '#e05252'; }
+
+      const isCurrent = Math.abs(price - currentInputs.share_price) <= 1 && Math.abs(margin - currentInputs.ebitda_margin) <= 5;
+      const border = isCurrent ? '1.5px solid var(--accent)' : 'none';
+      html += `<div class="hm-cell" style="background:${bg}; color:${fg}; border:${border};" title="Price: $${price}, Margin: ${margin}% → EV/EBITDA: ${fmtX(v)}">${fmtX(v)}</div>`;
+    });
+    html += `</div>`;
+  });
+
+  html += `<div style="margin-top:8px; font-family:var(--mono); font-size:9px; color:var(--text3);">
+    Rows = EBITDA Margin &nbsp;|&nbsp; Cols = Share Price &nbsp;|&nbsp; Values = EV/EBITDA &nbsp;|&nbsp;
+    <span style="color:var(--ok);">■</span> ≤10x &nbsp;
+    <span style="color:#8ecf9e;">■</span> 10–15x &nbsp;
+    <span style="color:var(--warn);">■</span> 15–20x &nbsp;
+    <span style="color:#e07070;">■</span> 20–30x &nbsp;
+    <span style="color:var(--danger);">■</span> >30x
+  </div>`;
+
+  document.getElementById('ev-heatmap-wrap').innerHTML =
+    `<div style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px;">${html}</div>`;
+}
+
+// Initialize
+update();
+</script>
+</body>
+</html>
